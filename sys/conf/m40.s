@@ -415,15 +415,15 @@ jflg:	.=.+1
 .globl	_fuword, _suword
 .globl	_fuiword, _suiword
 _fuibyte:
-_fubyte:
+_fubyte: /* 考虑到了传入的地址参数是奇数地址或者对齐的地址 */
 	mov	2(sp),r1
-	bic	$1,r1
+	bic	$1,r1		/* 先对地址作对齐 */
 	jsr	pc,gword
-	cmp	r1,2(sp)
+	cmp	r1,2(sp)	/* 对齐后的地址和原地址做对比，若相等则说明原地址就是对齐的，不相等则说明原地址是奇数地址 */
 	beq	1f
-	swab	r0
+	swab	r0		/* 高低byte 翻转一下 */
 1:
-	bic	$!377,r0
+	bic	$!377,r0	/
 	rts	pc
 
 _suibyte:
@@ -452,13 +452,13 @@ fuword:
 	rts	pc
 
 gword:
-	mov	PS,-(sp)
-	bis	$340,PS
-	mov	nofault,-(sp)
+	mov	PS,-(sp)	/* 暂存PS */	
+	bis	$340,PS		/* 关中断 */
+	mov	nofault,-(sp)	/* 推入变量nofault */
 	mov	$err,nofault
-	mfpi	(r1)
-	mov	(sp)+,r0
-	br	1f
+	mfpi	(r1)	/* 把前地址空间中的r1地址中的数据压栈，前地址空间即用户模式地址空间 */
+	mov	(sp)+,r0	/* 将数据赋给r0 */
+	br	1f			
 
 _suiword:
 _suword:
@@ -475,7 +475,7 @@ pword:
 	mov	$err,nofault
 	mov	r0,-(sp)
 	mtpi	(r1)
-1:
+1:	/* 从栈中恢复nofault, PS 准备返回 */
 	mov	(sp)+,nofault
 	mov	(sp)+,PS
 	rts	pc
@@ -619,14 +619,14 @@ _clearseg:
 	mov	PS,-(sp)
 	mov	UISA0,-(sp)
 	mov	$30340,PS
-	mov	6(sp),UISA0
+	mov	6(sp),UISA0		/* 6(sp)处为传入的块号 */
 	mov	UISD0,-(sp)
 	mov	$6,UISD0
 	clr	r0
-	mov	$32.,r1
+	mov	$32.,r1	/* 将这个块清0 */
 1:
 	clr	-(sp)
-	mtpi	(r0)+
+	mtpi	(r0)+	/* 从栈中弹出一个数据，并将这个数写入前模式的r0地址 */
 	sob	r1,1b
 	mov	(sp)+,UISD0
 	mov	(sp)+,UISA0
@@ -707,11 +707,11 @@ dump:
 .globl	start, _end, _edata, _main
 start:
 	bit	$1,SSR0
-	bne	start			/ loop if restart
+	bne	start			/ loop if restart	/系统刚启动时，预期MMU应该是未开启的
 	reset
 
 / initialize systems segments
-
+/ 	init priv APR0 - APR5
 	mov	$KISA0,r0
 	mov	$KISD0,r1
 	mov	$200,r4
@@ -724,7 +724,7 @@ start:
 	sob	r3,1b
 
 / initialize user segment
-
+/	init priv APR6
 	mov	$_end+63.,r2
 	ash	$-6,r2
 	bic	$!1777,r2
@@ -733,14 +733,14 @@ start:
 
 / initialize io segment
 / set up counts on supervisor segments
-
+	init priv APR7
 	mov	$IO,(r0)+
 	mov	$77406,(r1)+		/ rw 4k
 
 / get a sp and start segmentation
 
 	mov	$_u+[usize*64.],sp
-	inc	SSR0
+	inc	SSR0	/ enable the MMU SSR0[0]
 
 / clear bss
 
@@ -760,7 +760,7 @@ start:
 
 / set up previous mode and call main
 / on return, enter user mode at 0R
-
+	/ set previous mode to user mode
 	mov	$30000,PS
 	jsr	pc,_main
 	mov	$170000,-(sp)

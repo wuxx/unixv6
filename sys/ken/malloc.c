@@ -32,10 +32,10 @@ struct map *mp;
 	register struct map *bp;
 
 	for (bp = mp; bp->m_size; bp++) {
-		if (bp->m_size >= size) {
+		if (bp->m_size >= size) {	/* 在map中找到一个合适的bp */
 			a = bp->m_addr;
 			bp->m_addr =+ size;
-			if ((bp->m_size =- size) == 0)
+			if ((bp->m_size =- size) == 0)	/* 如果bp记录的内存大小正好等于需要的内存大小，则记录整体向前平移 */
 				do {
 					bp++;
 					(bp-1)->m_addr = bp->m_addr;

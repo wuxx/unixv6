@@ -56,15 +56,15 @@ main()
 	 */
 
 	updlock = 0;
-	i = *ka6 + USIZE;
-	UISD->r[0] = 077406;
-	for(;;) {
-		UISA->r[0] = i;
-		if(fuibyte(0) < 0)
+	i = *ka6 + USIZE;		/* 空闲物理块号 */
+	UISD->r[0] = 077406;	/* 8K Bytes rw */
+	for(;;) {				/* 每次只处理一个块 */
+		UISA->r[0] = i;		/* 用户态访问0-8K虚拟地址指向此物理内存 */
+		if(fuibyte(0) < 0)	/* 取用户态0地址空间中的一个word */
 			break;
 		clearseg(i);
 		maxmem++;
-		mfree(coremap, 1, i);
+		mfree(coremap, 1, i);	/* 将此块纳入到内存管理 */
 		i++;
 	}
 	if(cputype == 70)
@@ -92,12 +92,12 @@ main()
 	/*
 	 * set up system process
 	 */
-
+	/* 0号进程是内核手工创建的 */
 	proc[0].p_addr = *ka6;
 	proc[0].p_size = USIZE;
 	proc[0].p_stat = SRUN;
 	proc[0].p_flag =| SLOAD|SSYS;
-	u.u_procp = &proc[0];
+	u.u_procp = &proc[0];	/* 联接user和proc结构 */
 
 	/*
 	 * set up 'known' i-nodes
